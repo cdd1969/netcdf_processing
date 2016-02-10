@@ -22,7 +22,7 @@ assumptions introduces within these routines.
 """
 
 
-def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=False):
+def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=False, soil_surface='first'):
     '''Calculate relative layer thickness for mutlidimensional array
     (t, z, y, x) at timestep t=0
 
@@ -43,9 +43,18 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
         include_time (Optional[bool]):
             Flag to control the shape of the output array. It does not affect the data
             that is stored in output array: it is completely identical.
+            ---
             If `True` - the shape will be (time, z, y, x)
             If `False` - the shape will be (z, y, x)  (DEFAULT)
 
+        soil_surface (Optional['first'|'last']):
+            String flag that tells which `layer` should be considered closest to soil
+            surface. The `layer` is the index of the z-dimension in `layer_depth` array.
+            ---
+            If 'first' - z=0 is considered to be closest to soil surface layer, i.e.
+                         layer_depth(t, 0, y, x) - is the near-bottom layer at t,y,x
+            If 'last'  - z=-1 is considered to be closest to soil surface layer, i.e.
+                         layer_depth(t, -1, y, x) - is the near-bottom layer at t,y,x
     Return:
     -------
         layer_relthickness (3D|4D numpy array):
@@ -59,22 +68,23 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
     # >>> Allocate memory for `relative_thcikness` array, initialize it. This array represents relaitve layer thickness at timestep t=0 with respect to total water-depth. Values are always positive, dimensionless
     layer_relthickness = np.empty((z, y, x), dtype=float)
     
+    if soil_surface == 'first':
+        # >>> Layer thickness of the near-bottom layer
+        layer_thickness[0, :, :] = (water_depth[0, :, :] - (-layer_depth[0, 0, :, :]) ) * 2.0
+        # >>> Layer thickness of the rest layers
+        for k in xrange(1, z):
+            layer_thickness[k, :, :] = (water_depth[0, :, :] - (-layer_depth[0, k, :, :]) - layer_thickness[k-1, :, :]) * 2.0
 
-    # >>> Layer thickness of the near-bottom layer
-    layer_thickness[0, :, :] = (water_depth[0, :, :] - (-layer_depth[0, 0, :, :]) ) * 2.0
-    # >>> Layer thickness of the rest layers
-    for k in xrange(1, z):
-        layer_thickness[k, :, :] = (water_depth[0, :, :] - (-layer_depth[0, k, :, :]) - layer_thickness[k-1, :, :]) * 2.0
-
-    # >>> Now calculate relative layer thickness
-    for k in xrange(z):
-        layer_relthickness[k, :, :] = abs(layer_thickness[k, :, :] / water_depth[0, :, :])
-
+        # >>> Now calculate relative layer thickness
+        for k in xrange(z):
+            layer_relthickness[k, :, :] = abs(layer_thickness[k, :, :] / water_depth[0, :, :])
+    
+    # >>> Finally return the result
     if include_time is False:
         return layer_relthickness
     else:
         # add new axis at 0-index position
-        # and repeat the array (z,y,x) `t` times along `0` axis
+        # and repeat the array (z,y,x) `t` times along 0-index position axis
         return layer_relthickness.reshape(1, z, y, x).repeat(t, 0)
 
 
@@ -190,13 +200,17 @@ def create_depth_averaged_nc(nc_in,
 
     #>>> Now get the relative layer thickness
     layer_relthickness = caclulate_relative_layer_thickness(nc.variables[layerdepth_varname][:], nc.variables[waterdepth_varname][:], include_time=True)
+
     selected_layer_relthickness = np.take(layer_relthickness, np.arange( l1, l2+1, 1), axis=z_dim_index)
+    
+    # >>> Save into netcdf file
     if log: print 'creating variable:', 'layer_relative_thickness'
     newvar = ncout.createVariable('layer_relative_thickness', float, dimensions=nc.variables[layerdepth_varname].dimensions[1::])
     newvar.setncattr('units', 'dimensionless')
     newvar.setncattr('info', 'Variable is generated automatically during script execution. See function `caclulate_relative_layer_thickness()` in script `'+__name__+'`')
     newvar[:] = layer_relthickness[0, ...]
 
+    # >>> Continue with variables of interest
     if log: print u'Reading file: {2}. Calculating depth averaged data for layer range {0}:{1}'.format(l1, l2, nc_in)
     for v in var_list:
         if log: print u'Working with variable `{0}`'.format(v)
@@ -302,7 +316,7 @@ def create_depth_averaged_nc(nc_in,
                 help='Name of the output netcdf file with results. Default: `depth_averaged.nc`'
     )
 @click.option('--layers', '-l', type=click.IntRange(min=0), default=None, nargs=2,
-    help='Two integers, indicating the indexes (0-indexed) of layers to be averaged for the given `z_dimname` axis. This is useful to do averaging within certain layers (i.e 3 near-bed layers or 5 top-layers). Default: all layers of given axis will be considered'
+    help='Two integers, indicating the indexes (0-indexed) of layers to be averaged for the given `z_dimname` axis. This is useful to do averaging within certain layers (i.e 3 near-bed layers or 5 top-layers). Default: all layers of given `z_dimname` will be considered'
     )
 @click.option('--varname', '-v', type=click.STRING, multiple=True,
             default=('concentration_of_SPM_in_water_001', 'concentration_of_SPM_in_water_002'),
@@ -311,10 +325,10 @@ def create_depth_averaged_nc(nc_in,
 @click.option('--z_dimname', '-z', type=click.STRING, default='getmGrid3D_getm_3',
     help='Name of the dimension, along which the depth-averaging will be performed. Default: `getmGrid3D_getm_3`'
     )
-@click.option('--waterdepth_varname', type=click.STRING, default='water_depth_at_soil_surface',
+@click.option('--waterdepth_varname', '--wd', type=click.STRING, default='water_depth_at_soil_surface',
     help='Name of the variable that represents water depth at soil surface. Units must be shared with `layerdepth_varname`. Always positive. 3D-Array with (time, y, x) dimensions. Default: `water_depth_at_soil_surface`'
     )
-@click.option('--layerdepth_varname', type=click.STRING, default='getmGrid3D_getm_layer',
+@click.option('--layerdepth_varname', '--ld', type=click.STRING, default='getmGrid3D_getm_layer',
     help='Name of the variable that represents layer depth below water surface at the element center. Units must be shared with `waterdepth_varname`. Always negative. 4D-Array with (time, z, y, x) dimensions. Default `getmGrid3D_getm_layer`'
     )
 @click.option('--verbose', is_flag=True, default=False,
