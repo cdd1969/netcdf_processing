@@ -94,7 +94,7 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
 
 
 def create_depth_averaged_nc(nc_in,
-        nc_out='depth_averaged_spm.nc',
+        nc_out='out.nc',
         var_list=['concentration_of_SPM_in_water_001', 'concentration_of_SPM_in_water_002'],
         z_dimname='getmGrid3D_getm_3',
         layers=(),
@@ -117,7 +117,7 @@ def create_depth_averaged_nc(nc_in,
 
         nc_out (Optional[str]):
             absolute name of the result necdf file to be created. By default,
-            creates a file "depth_averaged_spm.nc" within current working dir
+            creates a file "out.nc" within current working dir
 
         var_list (Optional[list(str)]):
             list of the names of the variables within file `nc_in` which will
@@ -333,8 +333,8 @@ def create_depth_averaged_nc(nc_in,
 @click.command(short_help='putin')
 @click.argument('nc_in', type=click.Path(exists=True, dir_okay=False), metavar='nc_in'
     )
-@click.option('--nc_out', '-o', type=click.Path(exists=False, dir_okay=False), default='depth_averaged.nc',
-                help='Name of the output netcdf file with results. Default: `depth_averaged.nc`'
+@click.option('--nc_out', '-o', type=click.Path(exists=False, dir_okay=False), default='out.nc',
+                help='Name of the output netcdf file with results. Default: `out.nc`'
     )
 @click.option('--layers', '-l', type=click.IntRange(min=0), default=None, nargs=2,
     help='Two integers, indicating the indexes (0-indexed) of layers to be averaged for the given `z_dimname` axis. This is useful to do averaging within certain layers (i.e 3 near-bed layers or 5 top-layers). Default: all layers of given `z_dimname` will be considered'
