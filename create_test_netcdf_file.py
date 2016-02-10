@@ -47,6 +47,7 @@ def create_test_file(log=False):
     var['attrs']['long_name']     = 'water_depth_at_soil_surface'
     var['attrs']['units']         = 'm'
     var['attrs']['missing_value'] = -1.e+30
+    var['attrs']['coordinates']   = 'lat lon'
 
 
     VARS.append(var)
@@ -61,6 +62,7 @@ def create_test_file(log=False):
     var['attrs']['long_name']     = 'concentration_of_SPM_in_water_001'
     var['attrs']['units']         = 'mg/l'
     var['attrs']['missing_value'] = -1.e+30
+    var['attrs']['coordinates']   = 'layer lat lon'
 
 
     VARS.append(var)
