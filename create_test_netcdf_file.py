@@ -121,18 +121,18 @@ def create_test_file(log=False):
 
     nc.variables['water_depth_at_soil_surface'][:] = 5  # 5m depth everywhere
 
-    nc.variables['concentration_of_SPM_in_water_001'][:, 0, :, :] = 10  # concentration at all t,y,x
-    nc.variables['concentration_of_SPM_in_water_001'][:, 1, :, :] = 9   # concentration at all t,y,x
-    nc.variables['concentration_of_SPM_in_water_001'][:, 2, :, :] = 8   # concentration at all t,y,x
-    nc.variables['concentration_of_SPM_in_water_001'][:, 3, :, :] = 7   # concentration at all t,y,x
-    nc.variables['concentration_of_SPM_in_water_001'][:, 4, :, :] = 6   # concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_001'][:, 0, :, :] = 10  # [mg/l]=[g/m3] concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_001'][:, 1, :, :] = 9   # [mg/l]=[g/m3] concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_001'][:, 2, :, :] = 8   # [mg/l]=[g/m3] concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_001'][:, 3, :, :] = 7   # [mg/l]=[g/m3] concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_001'][:, 4, :, :] = 6   # [mg/l]=[g/m3] concentration at all t,y,x
 
 
-    nc.variables['concentration_of_SPM_in_water_002'][:, 0, :, :] = 2*10  # concentration at all t,y,x
-    nc.variables['concentration_of_SPM_in_water_002'][:, 1, :, :] = 2*9   # concentration at all t,y,x
-    nc.variables['concentration_of_SPM_in_water_002'][:, 2, :, :] = 2*8   # concentration at all t,y,x
-    nc.variables['concentration_of_SPM_in_water_002'][:, 3, :, :] = 2*7   # concentration at all t,y,x
-    nc.variables['concentration_of_SPM_in_water_002'][:, 4, :, :] = 2*6   # concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_002'][:, 0, :, :] = 2*10  # [mg/l]=[g/m3] concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_002'][:, 1, :, :] = 2*9   # [mg/l]=[g/m3] concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_002'][:, 2, :, :] = 2*8   # [mg/l]=[g/m3] concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_002'][:, 3, :, :] = 2*7   # [mg/l]=[g/m3] concentration at all t,y,x
+    nc.variables['concentration_of_SPM_in_water_002'][:, 4, :, :] = 2*6   # [mg/l]=[g/m3] concentration at all t,y,x
 
     nc.variables['getmGrid3D_getm_layer'][0, :, :] = -4.5   # depth of the layer middle in [m] downside negative
     nc.variables['getmGrid3D_getm_layer'][1, :, :] = -3.5   # depth of the layer middle in [m] downside negative
@@ -140,9 +140,34 @@ def create_test_file(log=False):
     nc.variables['getmGrid3D_getm_layer'][3, :, :] = -1.5   # depth of the layer middle in [m] downside negative
     nc.variables['getmGrid3D_getm_layer'][4, :, :] = -0.5   # depth of the layer middle in [m] downside negative
 
-
     # close the file
     nc.close()
+
+
+    # the integration results should be....
+    ''' for one cell (y,x) vertical column (5,1,1) (z-size,y-size,x-size)
+
+    relative thickness:
+
+        [0.2, 0.2, 0.2, 0.2, 0.2]
+
+    mass_spm001 [g/m2]:
+        [10*0.2*5, 9*0.2*5, 8*0.2*5, 7*0.2*5, 6*0.2*5]=
+       =[10, 9, 8, 7, 6]
+    
+    mass_spm001_depth_ave [g/m2]:
+        sum(10, 9, 8, 7, 6)/5 = 8
+
+    mass_spm001 [g/m2]:
+       [20, 18, 16, 14, 12]
+    
+    mass_spm002_depth_ave [g/m2]:
+        sum(20, 18, 16, 14, 12)/5 = 16
+
+    mass_summ_depth_ave [g/m2]:
+        8+16 = 24
+
+    '''
     if log:
         print 'File created successfully'
 

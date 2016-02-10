@@ -233,7 +233,18 @@ def create_depth_averaged_nc(nc_in,
         original_var[:] = var[:]
 
         #>>> Now make sure that coordinate-variables are saved
-        for dim_name in var.dimensions:
+        #    1) It could be the name of the dimension
+        #    2) It could be stored within `coordinates` attribute
+        possible_coord_var_list = list(var.dimensions)
+        if 'coordinates' in var.ncattrs():
+            coords = var.coordinates
+            if isinstance(coords, (list, tuple)):
+                possible_coord_var_list += list(coords)
+            elif isinstance(coords, (str, unicode)):
+                possible_coord_var_list += coords.split()
+        
+        #>>> Now check if these coord-vars already exist. If not - save them!
+        for dim_name in possible_coord_var_list:
             if dim_name in nc.variables.keys() and dim_name not in ncout.variables.keys():
                 #>>> if conditions are met > copy our coordinate-variable
                 if log: print '\tcopying coordinate variable:', dim_name
