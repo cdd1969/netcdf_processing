@@ -209,7 +209,7 @@ def create_depth_averaged_nc(nc_in,
     
     # >>> Save into netcdf file
     if log: print 'creating variable:', 'layer_relative_thickness'
-    newvar = ncout.createVariable('layer_relative_thickness', float, dimensions=nc.variables[layerdepth_varname].dimensions[1::])
+    newvar = ncout.createVariable('layer_relative_thickness', float, dimensions=nc.variables[layerdepth_varname].dimensions)
     newvar.setncattr('units', 'dimensionless')
     newvar.setncattr('info', 'Variable is generated automatically during script execution. See function `caclulate_relative_layer_thickness()` in script `'+__name__+'`')
     newvar[:] = layer_relthickness[0, ...]
@@ -233,10 +233,15 @@ def create_depth_averaged_nc(nc_in,
 
         #>>> Now make sure that coordinate-variables are saved
         for dim_name in var.dimensions:
-            if dim_name in nc.variables.keys() and dim_name not in nc_out.variables.keys():
+            if dim_name in nc.variables.keys() and dim_name not in ncout.variables.keys():
                 #>>> if conditions are met > copy our coordinate-variable
-                if log: print 'copying coordinate variable:', dim_name
-                coord_var = ncout.createVariable(dim_name, nc.variables[dim_name].datatype, dimensions=nc.variables[dim_name].dimensions, fill_value=nc.variables[dim_name]._FillValue)
+                if log: print '\tcopying coordinate variable:', dim_name
+                try:
+                    fv = nc.variables[dim_name]._FillValue
+                    coord_var = ncout.createVariable(dim_name, nc.variables[dim_name].datatype, dimensions=nc.variables[dim_name].dimensions, fill_value=fv)
+                except:
+                    coord_var = ncout.createVariable(dim_name, nc.variables[dim_name].datatype, dimensions=nc.variables[dim_name].dimensions)
+
                 for attr_n in nc.variables[dim_name].ncattrs():
                     coord_var.setncattr(attr_n, nc.variables[dim_name].getncattr(attr_n))
                 coord_var[:] = var[:]
@@ -244,21 +249,21 @@ def create_depth_averaged_nc(nc_in,
 
         # create depth averaging
         data = var[:]
-        if log: print 'original data shape:', data.shape
+        if log: print '\toriginal data shape:', data.shape
         selected_data = np.take(data, np.arange( l1, l2+1, 1), axis=z_dim_index)
         
-        if log: print 'selected data shape:', selected_data.shape
+        if log: print '\tselected data shape:', selected_data.shape
         # careful here!
         #   selected_layer_relthickness.shape = (time, z-selected, y, x)
         #   selected_data.shape = (time, z-selected, y, x)
         averaged_data = np.sum(selected_layer_relthickness * selected_data, axis=z_dim_index)
 
-        if log: print 'averaged data shape:', averaged_data.shape
-        if log: print 'depth averaging >>> ok'
+        if log: print '\taveraged data shape:', averaged_data.shape
+        if log: print '\tdepth averaging >>> ok'
         
 
 
-        if log: print 'creating variable:', name
+        if log: print '\tcreating variable:', name
         newvar = ncout.createVariable(name, dType, dimensions=averaged_dims_names, fill_value=fv)
         newvar.setncattr('units', units)
         newvar.setncattr('original_var_name', v)
