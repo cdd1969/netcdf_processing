@@ -30,13 +30,13 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
         1) z=0 is the closest to soil-surface layer, where `z` is the index
            of the vertical dimension of the matrix
 
-        2) relative layer thickness is not time dependent
+        2) relative layer thickness is not time dependent !!!
 
     Args:
     -----
-        layer_depth (4D numpy array):
-            4D-Array with (time, z, y, x) dimensions; represents layer depth below
-            water surface (0, level) at center of each z,y,x cell at timestep t.
+        layer_depth (3D numpy array):
+            3D-Array with (z, y, x) dimensions; represents layer depth below
+            water surface (0, level) at center of each z,y,x cell.
             Units are shared with `water_depth` array. Always negative.
         
         water_depth (3D numpy array):
@@ -58,6 +58,7 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
                          layer_depth(t, 0, y, x) - is the near-bottom layer at t,y,x
             If 'last'  - z=-1 is considered to be closest to soil surface layer, i.e.
                          layer_depth(t, -1, y, x) - is the near-bottom layer at t,y,x
+
     Return:
     -------
         layer_relthickness (3D|4D numpy array):
@@ -65,7 +66,8 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
             Is dimensionless and is constant within simulation period
     '''
     # >>> Get dimensions
-    t, z, y, x = layer_depth.shape
+    z, y, x = layer_depth.shape
+    t, y, x = water_depth.shape
     # >>> Allocate memory for `layear_thickness` array, initialize it. This array represents layer thickness at timestep t=0. Values are always positive
     layer_thickness = np.empty((z, y, x), dtype=float)
     # >>> Allocate memory for `relative_thcikness` array, initialize it. This array represents relaitve layer thickness at timestep t=0 with respect to total water-depth. Values are always positive, dimensionless
@@ -73,11 +75,10 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
     
     if soil_surface == 'first':
         # >>> Layer thickness of the near-bottom layer
-        layer_thickness[0, :, :] = (water_depth[0, :, :] - (-layer_depth[0, 0, :, :]) ) * 2.0
+        layer_thickness[0, :, :] = (water_depth[0, :, :] - (-layer_depth[0, :, :]) ) * 2.0
         # >>> Layer thickness of the rest layers
         for k in xrange(1, z):
-            layer_thickness[k, :, :] = (water_depth[0, :, :] - (-layer_depth[0, k, :, :]) - layer_thickness[k-1, :, :]) * 2.0
-
+            layer_thickness[k, :, :] = (water_depth[0, :, :] - (-layer_depth[k, :, :]) - layer_thickness[k-1, :, :]) * 2.0
         # >>> Now calculate relative layer thickness
         for k in xrange(z):
             layer_relthickness[k, :, :] = abs(layer_thickness[k, :, :] / water_depth[0, :, :])
