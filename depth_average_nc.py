@@ -190,6 +190,7 @@ def create_depth_averaged_nc(nc_in,
     #>>> Create them in netcdf out-file
     for dim_n, dim_s in zip(original_dims_names, original_dims_sizes):
         if dim_n not in ncout.dimensions.keys():
+	    if log: print 'Creating dimension:', dim_n, 'of size', dim_s
             ncout.createDimension(dim_n, size=dim_s)
 
     #>>> Decide which layers I'd like to consider for averaging
@@ -244,7 +245,7 @@ def create_depth_averaged_nc(nc_in,
 
                 for attr_n in nc.variables[dim_name].ncattrs():
                     coord_var.setncattr(attr_n, nc.variables[dim_name].getncattr(attr_n))
-                coord_var[:] = var[:]
+                coord_var[:] = nc.variables[dim_name][:]
 
 
         # create depth averaging
