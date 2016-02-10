@@ -328,10 +328,10 @@ def create_depth_averaged_nc(nc_in,
 @click.option('--z_dimname', '-z', type=click.STRING, default='getmGrid3D_getm_3',
     help='Name of the dimension, along which the depth-averaging will be performed. Default: `getmGrid3D_getm_3`'
     )
-@click.option('--waterdepth_varname', '--wd', name='waterdepth_varname', type=click.STRING, default='water_depth_at_soil_surface',
+@click.option('--waterdepth_varname', '--wd', 'waterdepth_varname', type=click.STRING, default='water_depth_at_soil_surface',
     help='Name of the variable that represents water depth at soil surface. Units must be shared with `layerdepth_varname`. Always positive. 3D-Array with (time, y, x) dimensions. Default: `water_depth_at_soil_surface`'
     )
-@click.option('--layerdepth_varname', '--ld', name='layerdepth_varname', type=click.STRING, default='getmGrid3D_getm_layer',
+@click.option('--layerdepth_varname', '--ld', 'layerdepth_varname', type=click.STRING, default='getmGrid3D_getm_layer',
     help='Name of the variable that represents layer depth below water surface at the element center. Units must be shared with `waterdepth_varname`. Always negative. 4D-Array with (time, z, y, x) dimensions. Default `getmGrid3D_getm_layer`'
     )
 @click.option('--verbose', is_flag=True, default=False,
