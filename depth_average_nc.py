@@ -22,7 +22,7 @@ assumptions introduces within these routines.
 """
 
 
-def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=False, soil_surface='first'):
+def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=False):
     '''Calculate relative layer thickness for mutlidimensional array
     (t, z, y, x) at timestep t=0
 
@@ -50,15 +50,6 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
             If `True` - the shape will be (time, z, y, x)
             If `False` - the shape will be (z, y, x)  (DEFAULT)
 
-        soil_surface (Optional['first'|'last']):
-            String flag that tells which `layer` should be considered closest to soil
-            surface. The `layer` is the index of the z-dimension in `layer_depth` array.
-            ---
-            If 'first' - z=0 is considered to be closest to soil surface layer, i.e.
-                         layer_depth(t, 0, y, x) - is the near-bottom layer at t,y,x
-            If 'last'  - z=-1 is considered to be closest to soil surface layer, i.e.
-                         layer_depth(t, -1, y, x) - is the near-bottom layer at t,y,x
-
     Return:
     -------
         layer_relthickness (3D|4D numpy array):
@@ -73,16 +64,17 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
     # >>> Allocate memory for `relative_thcikness` array, initialize it. This array represents relaitve layer thickness at timestep t=0 with respect to total water-depth. Values are always positive, dimensionless
     layer_relthickness = np.empty((z, y, x), dtype=float)
     
-    if soil_surface == 'first':
-        # >>> Layer thickness of the near-bottom layer
-        layer_thickness[0, :, :] = (water_depth[0, :, :] - (-layer_depth[0, :, :]) ) * 2.0
-        # >>> Layer thickness of the rest layers
-        for k in xrange(1, z):
-            layer_thickness[k, :, :] = (water_depth[0, :, :] - (-layer_depth[k, :, :]) - layer_thickness[k-1, :, :]) * 2.0
-        # >>> Now calculate relative layer thickness
-        for k in xrange(z):
-            layer_relthickness[k, :, :] = abs(layer_thickness[k, :, :] / water_depth[0, :, :])
-    
+
+
+    # >>> Layer thickness of the near-bottom layer
+    layer_thickness[0, :, :] = (water_depth[0, :, :] - (-layer_depth[0, :, :]) ) * 2.0
+    # >>> Layer thickness of the rest layers
+    for k in xrange(1, z):
+        #layer_thickness[k, :, :] = (water_depth[0, :, :] - (-layer_depth[k, :, :]) - layer_thickness[k-1, :, :]) * 2.0
+        layer_thickness[k, :, :] = (water_depth[0, :, :] - (-layer_depth[k, :, :]) - np.sum(layer_thickness[0:k, :, :], axis=0)) * 2.0
+    # >>> Now calculate relative layer thickness
+    for k in xrange(z):
+        layer_relthickness[k, :, :] = abs(layer_thickness[k, :, :] / water_depth[0, :, :])
     # >>> Finally return the result
     if include_time is False:
         return layer_relthickness
@@ -94,7 +86,7 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
 
 
 def create_depth_averaged_nc(nc_in,
-        nc_out='depth_averaged_spm.nc',
+        nc_out='out.nc',
         var_list=['concentration_of_SPM_in_water_001', 'concentration_of_SPM_in_water_002'],
         z_dimname='getmGrid3D_getm_3',
         layers=(),
@@ -117,7 +109,7 @@ def create_depth_averaged_nc(nc_in,
 
         nc_out (Optional[str]):
             absolute name of the result necdf file to be created. By default,
-            creates a file "depth_averaged_spm.nc" within current working dir
+            creates a file "out.nc" within current working dir
 
         var_list (Optional[list(str)]):
             list of the names of the variables within file `nc_in` which will
@@ -206,8 +198,8 @@ def create_depth_averaged_nc(nc_in,
     #>>> Now get the relative layer thickness
     layer_relthickness = caclulate_relative_layer_thickness(nc.variables[layerdepth_varname][:], nc.variables[waterdepth_varname][:], include_time=True)
 
+
     selected_layer_relthickness = np.take(layer_relthickness, np.arange( l1, l2+1, 1), axis=z_dim_index)
-    
     # >>> Save into netcdf file
     if log: print 'creating variable:', 'layer_relative_thickness'
     newvar = ncout.createVariable('layer_relative_thickness', float, dimensions=nc.variables[layerdepth_varname].dimensions)
@@ -217,6 +209,7 @@ def create_depth_averaged_nc(nc_in,
 
     # >>> Continue with variables of interest
     if log: print u'Reading file: {2}. Calculating depth averaged data for layer range {0}:{1}'.format(l1, l2, nc_in)
+    
     for v in var_list:
         if log: print u'Working with variable `{0}`'.format(v)
         var = nc.variables[v]
@@ -231,6 +224,7 @@ def create_depth_averaged_nc(nc_in,
         for attr_n in var.ncattrs():
             original_var.setncattr(attr_n, var.getncattr(attr_n))
         original_var[:] = var[:]
+        if log: print u'\tCopying original variable', v
 
         #>>> Now make sure that coordinate-variables are saved
         #    1) It could be the name of the dimension
@@ -242,12 +236,14 @@ def create_depth_averaged_nc(nc_in,
                 possible_coord_var_list += list(coords)
             elif isinstance(coords, (str, unicode)):
                 possible_coord_var_list += coords.split()
-        
+
+        if log: print u'\tChecking for possible coordinate-varibles:'
         #>>> Now check if these coord-vars already exist. If not - save them!
         for dim_name in possible_coord_var_list:
+            if log: print u'\t\t', dim_name, '>>>',
             if dim_name in nc.variables.keys() and dim_name not in ncout.variables.keys():
                 #>>> if conditions are met > copy our coordinate-variable
-                if log: print '\tcopying coordinate variable:', dim_name
+                if log: print 'copying'
                 try:
                     fv = nc.variables[dim_name]._FillValue
                     coord_var = ncout.createVariable(dim_name, nc.variables[dim_name].datatype, dimensions=nc.variables[dim_name].dimensions, fill_value=fv)
@@ -257,6 +253,14 @@ def create_depth_averaged_nc(nc_in,
                 for attr_n in nc.variables[dim_name].ncattrs():
                     coord_var.setncattr(attr_n, nc.variables[dim_name].getncattr(attr_n))
                 coord_var[:] = nc.variables[dim_name][:]
+            else:
+                if log:
+                    print 'skipping',
+                    if dim_name in ncout.variables.keys():
+                        print '(already copied)'
+                    elif dim_name not in nc.variables.keys():
+                        print '(not found in NC_IN)'
+
 
 
         # create depth averaging
@@ -295,17 +299,10 @@ def create_depth_averaged_nc(nc_in,
         newvar.setncattr('averaged_along', z_dimname)
         newvar.setncattr('layers_averaged', [l1, l2])
         newvar.setncattr('info', 'this variable has been generated by summing data from variables <vars_to_sum>')
-        newvar[:] = np.sum(savedData)
+        newvar[:] = np.sum(savedData, axis=0)
 
     nc.close()
     ncout.close()
-    #print 'Finished: <{0}> created successfully.'.format(nc_out)
-
-
-
-
-
-
 
 
 
@@ -333,8 +330,8 @@ def create_depth_averaged_nc(nc_in,
 @click.command(short_help='putin')
 @click.argument('nc_in', type=click.Path(exists=True, dir_okay=False), metavar='nc_in'
     )
-@click.option('--nc_out', '-o', type=click.Path(exists=False, dir_okay=False), default='depth_averaged.nc',
-                help='Name of the output netcdf file with results. Default: `depth_averaged.nc`'
+@click.option('--nc_out', '-o', type=click.Path(exists=False, dir_okay=False), default='out.nc',
+                help='Name of the output netcdf file with results. Default: `out.nc`'
     )
 @click.option('--layers', '-l', type=click.IntRange(min=0), default=None, nargs=2,
     help='Two integers, indicating the indexes (0-indexed) of layers to be averaged for the given `z_dimname` axis. This is useful to do averaging within certain layers (i.e 3 near-bed layers or 5 top-layers). Default: all layers of given `z_dimname` will be considered'
