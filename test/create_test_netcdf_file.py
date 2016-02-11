@@ -4,7 +4,7 @@ import netCDF4
 from os import path as op
 
 
-def create_test_file(fname='test.nc', layer_height='eq', log=False, testmode=False):
+def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, log=False, testmode=False):
     '''
         Args:
         -----
@@ -15,11 +15,30 @@ def create_test_file(fname='test.nc', layer_height='eq', log=False, testmode=Fal
 
             'eq' - all 5 layers are 1m
             'noneq' - 0.1, 0.3, 0.6, 1.5, 2.5 m
+
+        masked_borders(bool):
+            flag to mask all border value within x/y plane
+            for our data-variables
+            If `False`:
+
+                [[5, 5, 5, 5, 5],
+                 [5, 5, 5, 5, 5],
+                 [5, 5, 5, 5, 5],
+                 [5, 5, 5, 5, 5]]
+            If `True`:
+
+                [[--, --, --, --, --],
+                 [--,  5,  5,  5, --],
+                 [--,  5,  5,  5, --],
+                 [--, --, --, --, --]]
     '''
     if layer_height == 'eq':
         predefined_layer_depth = [-4.5, -3.5, -2.5, -1.5, -0.5]
     elif layer_height == 'noneq':
         predefined_layer_depth = [-4.95, -4.75, -4.3, -3.25, -1.25]
+
+
+    fill_value = 999.
 
 
 
@@ -58,12 +77,12 @@ def create_test_file(fname='test.nc', layer_height='eq', log=False, testmode=Fal
     var = dict()
     var['Name']                   = 'water_depth_at_soil_surface'
     var['Nctype']                 = 'float'
-    var['_FillValue']             = -1.e+30
+    var['_FillValue']             = fill_value
     var['attrs']                  = dict()
     var['Dims']                   = ['time', 'getmGrid2D_getm_2', 'getmGrid2D_getm_1']
     var['attrs']['long_name']     = 'water_depth_at_soil_surface'
     var['attrs']['units']         = 'm'
-    var['attrs']['missing_value'] = -1.e+30
+    var['attrs']['missing_value'] = fill_value
     var['attrs']['coordinates']   = 'lat lon'
 
 
@@ -73,12 +92,12 @@ def create_test_file(fname='test.nc', layer_height='eq', log=False, testmode=Fal
     var = dict()
     var['Name']                   = 'concentration_of_SPM_in_water_001'
     var['Nctype']                 = 'float'
-    var['_FillValue']             = -1.e+30
+    var['_FillValue']             = fill_value
     var['attrs']                  = dict()
     var['Dims']                   = ['time', 'getmGrid3D_getm_3', 'getmGrid3D_getm_2', 'getmGrid3D_getm_1']
     var['attrs']['long_name']     = 'concentration_of_SPM_in_water_001'
     var['attrs']['units']         = 'mg/l'
-    var['attrs']['missing_value'] = -1.e+30
+    var['attrs']['missing_value'] = fill_value
     var['attrs']['coordinates']   = 'layer lat lon'
 
 
@@ -88,12 +107,12 @@ def create_test_file(fname='test.nc', layer_height='eq', log=False, testmode=Fal
     var = dict()
     var['Name']                   = 'concentration_of_SPM_in_water_002'
     var['Nctype']                 = 'float'
-    var['_FillValue']             = -1.e+30
+    var['_FillValue']             = fill_value
     var['attrs']                  = dict()
     var['Dims']                   = ['time', 'getmGrid3D_getm_3', 'getmGrid3D_getm_2', 'getmGrid3D_getm_1']
     var['attrs']['long_name']     = 'concentration_of_SPM_in_water_002'
     var['attrs']['units']         = 'mg/l'
-    var['attrs']['missing_value'] = -1.e+30
+    var['attrs']['missing_value'] = fill_value
 
 
     VARS.append(var)
@@ -101,13 +120,13 @@ def create_test_file(fname='test.nc', layer_height='eq', log=False, testmode=Fal
     var = dict()
     var['Name']                   = 'getmGrid3D_getm_layer'
     var['Nctype']                 = 'float'
-    var['_FillValue']             = -1.e+30
+    var['_FillValue']             = fill_value
     var['attrs']                  = dict()
     var['Dims']                   = ['getmGrid3D_getm_3', 'getmGrid3D_getm_2', 'getmGrid3D_getm_1']
     var['attrs']['long_name']     = 'getmGrid3D_getm_layer'
     var['attrs']['info']          = 'Initial distance from water surface to the middle of the layer. Always negative'
     var['attrs']['units']         = 'mg'
-    var['attrs']['missing_value'] = -1.e+30
+    var['attrs']['missing_value'] = fill_value
 
 
     VARS.append(var)
@@ -160,6 +179,19 @@ def create_test_file(fname='test.nc', layer_height='eq', log=False, testmode=Fal
     nc.variables['getmGrid3D_getm_layer'][4, :, :] = predefined_layer_depth[4]   # depth of the layer middle in [m] downside negative
 
 
+    if masked_borders:
+        # set fill_values
+        for v_name in ['water_depth_at_soil_surface', 'getmGrid3D_getm_layer']:
+            nc.variables[v_name][:, 0, :] = fill_value
+            nc.variables[v_name][:, -1, :] = fill_value
+            nc.variables[v_name][:, :, 0] = fill_value
+            nc.variables[v_name][:, :, -1] = fill_value
+
+        for v_name in ['concentration_of_SPM_in_water_001', 'concentration_of_SPM_in_water_002']:
+            nc.variables[v_name][:, :, 0, :] = fill_value
+            nc.variables[v_name][:, :, -1, :] = fill_value
+            nc.variables[v_name][:, :, :, 0] = fill_value
+            nc.variables[v_name][:, :, :, -1] = fill_value
 
     # the integration results should be....
     ''' for one cell (y,x) vertical column (5,1,1) (z-size,y-size,x-size)

@@ -151,7 +151,7 @@ def create_depth_averaged_nc(nc_in,
             name of the variable in `nc_in` netcdf file, that represents
             layer depth below water surface at the element center. Units
             must be shared with `waterdepth_varname`. Always negative.
-            4D-Array with (time, z, y, x) dimensions;
+            3D-Array with (z, y, x) dimensions;
             By default will use "getmGrid3D_getm_layer"
 
         log (Optional[bool]):
@@ -302,6 +302,7 @@ def create_depth_averaged_nc(nc_in,
         newvar[:] = sum(savedData)
         if isinstance(newvar[:], np.ma.MaskedArray):
             newvar[:].set_fill_value(var._FillValue)
+
 
     nc.close()
     ncout.close()
