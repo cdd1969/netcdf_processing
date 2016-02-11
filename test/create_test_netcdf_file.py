@@ -4,13 +4,30 @@ import netCDF4
 from os import path as op
 
 
-def create_test_file(log=False):
+def create_test_file(fname='test.nc', layer_height='eq', log=False, testmode=False):
+    '''
+        Args:
+        -----
+
+        layer_height(str):
+            param to control the thickness of vertical layers
+            in this example we have 5 vertical layers
+
+            'eq' - all 5 layers are 1m
+            'noneq' - 0.1, 0.3, 0.6, 1.5, 2.5 m
+    '''
+    if layer_height == 'eq':
+        predefined_layer_depth = [-4.5, -3.5, -2.5, -1.5, -0.5]
+    elif layer_height == 'noneq':
+        predefined_layer_depth = [-4.95, -4.75, -4.3, -3.25, -1.25]
+
+
 
     # _________________________________________________________________________
     # put everything in netCDF file.
 
     # create netCDF file
-    nc = netCDF4.Dataset('test.nc', mode='w')
+    nc = netCDF4.Dataset(fname, mode='w')
     
 
     # create global attributes
@@ -136,14 +153,12 @@ def create_test_file(log=False):
     nc.variables['concentration_of_SPM_in_water_002'][:, 3, :, :] = 2*7   # [mg/l]=[g/m3] concentration at all t,y,x
     nc.variables['concentration_of_SPM_in_water_002'][:, 4, :, :] = 2*6   # [mg/l]=[g/m3] concentration at all t,y,x
 
-    nc.variables['getmGrid3D_getm_layer'][0, :, :] = -4.5   # depth of the layer middle in [m] downside negative
-    nc.variables['getmGrid3D_getm_layer'][1, :, :] = -3.5   # depth of the layer middle in [m] downside negative
-    nc.variables['getmGrid3D_getm_layer'][2, :, :] = -2.5   # depth of the layer middle in [m] downside negative
-    nc.variables['getmGrid3D_getm_layer'][3, :, :] = -1.5   # depth of the layer middle in [m] downside negative
-    nc.variables['getmGrid3D_getm_layer'][4, :, :] = -0.5   # depth of the layer middle in [m] downside negative
+    nc.variables['getmGrid3D_getm_layer'][0, :, :] = predefined_layer_depth[0]   # depth of the layer middle in [m] downside negative
+    nc.variables['getmGrid3D_getm_layer'][1, :, :] = predefined_layer_depth[1]   # depth of the layer middle in [m] downside negative
+    nc.variables['getmGrid3D_getm_layer'][2, :, :] = predefined_layer_depth[2]   # depth of the layer middle in [m] downside negative
+    nc.variables['getmGrid3D_getm_layer'][3, :, :] = predefined_layer_depth[3]   # depth of the layer middle in [m] downside negative
+    nc.variables['getmGrid3D_getm_layer'][4, :, :] = predefined_layer_depth[4]   # depth of the layer middle in [m] downside negative
 
-    # close the file
-    nc.close()
 
 
     # the integration results should be....
@@ -170,8 +185,16 @@ def create_test_file(log=False):
         8+16 = 24
 
     '''
-    if log:
-        print 'File created successfully'
+    if not testmode:
+        # close the file
+        nc.close()
+        if log:
+            print 'File created successfully'
+    
+    else:
+        return nc
+
+
 
 if __name__ == '__main__':
     create_test_file(log=True)
