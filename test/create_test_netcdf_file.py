@@ -229,4 +229,4 @@ def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, l
 
 
 if __name__ == '__main__':
-    create_test_file(log=True)
+    create_test_file(fname='append_test.nc', layer_height='noneq', masked_borders=True)

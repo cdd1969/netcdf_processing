@@ -443,8 +443,11 @@ def run(nc_in, nc_out, append, layers, varname, z_dimname, waterdepth_varname, l
         waterdepth_varname=waterdepth_varname,
         layerdepth_varname=layerdepth_varname,
         log=verbose)
-
-    click.echo(click.style('Finished: <{0}> created successfully.'.format(nc_out), fg='green', bold=True))
+    
+    if append is False:
+        click.echo(click.style('Finished: <{0}> created successfully.'.format(nc_out), fg='green', bold=True))
+    else:
+        click.echo(click.style('Finished: <{0}> appended successfully.'.format(nc_in), fg='green', bold=True))
 
 if __name__ == '__main__':
     run()
