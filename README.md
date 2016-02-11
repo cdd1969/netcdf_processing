@@ -16,6 +16,8 @@ Download the source code, no specific installation is needed:
 $ git clone https://github.com/cdd1969/netcdf_processing.git scripts
 ```
 ## Testing
+**Note:** testing requires the write-right in the `scripts/test` directory, since test-netcdf files are generated during testing and afterwards deleted
+
 It is recommended afterwards to run test cases:
 
 ```sh
