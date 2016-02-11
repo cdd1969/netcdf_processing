@@ -178,7 +178,35 @@ class DepthAverageScriptTest_NonEqualLayers_Masked(DepthAverageScriptBaseTestCas
         var = self.nc.variables['SUM_averaged']
         self.basetest_depth_averaged_summ_spm001_spm002(var, 20.4, masked_borders=True)
 
+
+class DepthAverageScriptTest_NonEqualLayers_Masked_Append(DepthAverageScriptBaseTestCase):
+    def setUp(self):
+        self.nc_fname = 'test_nonequal_ma_append.nc'
+        create_test_file(fname=self.nc_fname, layer_height='noneq', masked_borders=True)
+        create_depth_averaged_nc(self.nc_fname, nc_out=None, log=False)
+        self.nc = netCDF4.Dataset(self.nc_fname, 'r')
+
+    def tearDown(self):
+        self.nc.close()
+        os.remove(self.nc_fname)
+
+    def test_relative_layer_thickness(self):
+        var = self.nc.variables['layer_relative_thickness']
+        self.basetest_relative_layer_thickness(var, [0.02, 0.06, 0.12, 0.3, 0.5])
+
+    def test_depth_averaged_spm001(self):
+        var = self.nc.variables['concentration_of_SPM_in_water_001_averaged']
+        self.basetest_depth_averaged_spm001(var, 6.8, masked_borders=True)
+    
+    def test_depth_averaged_spm002(self):
+        var = self.nc.variables['concentration_of_SPM_in_water_002_averaged']
+        self.basetest_depth_averaged_spm002(var, 13.6, masked_borders=True)
+
+    def test_depth_averaged_summ_spm001_spm002(self):
+        var = self.nc.variables['SUM_averaged']
+        self.basetest_depth_averaged_summ_spm001_spm002(var, 20.4, masked_borders=True)
+
+
+
 if __name__ == '__main__':
-
-
     unittest.main()
