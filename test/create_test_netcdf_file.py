@@ -73,6 +73,31 @@ def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, l
 
     VARS.append(var)
 
+    var = dict()
+    var['Name']                   = 'lat'
+    var['Nctype']                 = 'float'
+    var['_FillValue']             = fill_value
+    var['attrs']                  = dict()
+    var['Dims']                   = ['getmGrid2D_getm_2', 'getmGrid2D_getm_1']
+    var['attrs']['long_name']     = 'latitude'
+    var['attrs']['units']         = 'degree_east'
+    var['attrs']['missing_value'] = fill_value
+
+    VARS.append(var)
+
+    var = dict()
+    var['Name']                   = 'lon'
+    var['Nctype']                 = 'float'
+    var['_FillValue']             = fill_value
+    var['attrs']                  = dict()
+    var['Dims']                   = ['getmGrid2D_getm_2', 'getmGrid2D_getm_1']
+    var['attrs']['long_name']     = 'longitude'
+    var['attrs']['units']         = 'degree_north'
+    var['attrs']['missing_value'] = fill_value
+
+
+    VARS.append(var)
+
 
     var = dict()
     var['Name']                   = 'water_depth_at_soil_surface'
@@ -156,6 +181,9 @@ def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, l
 
     # save values...
     nc.variables['time'][:] = np.array([3600*i for i in xrange(3)])
+    
+    nc.variables['lat'][:] = np.array([range(15), ]*10)
+    nc.variables['lon'][:] = np.array([[l*0.1 for l in xrange(15)], ]*10).transpose()
 
     nc.variables['water_depth_at_soil_surface'][:] = 5  # 5m depth everywhere
 
@@ -229,4 +257,8 @@ def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, l
 
 
 if __name__ == '__main__':
+
     create_test_file(fname='append_test.nc', layer_height='noneq', masked_borders=True)
+    create_test_file(fname='append_test1.nc', layer_height='noneq', masked_borders=True)
+    create_test_file(fname='append_test2.nc', layer_height='noneq', masked_borders=True)
+    create_test_file(fname='append_test3.nc', layer_height='noneq', masked_borders=True)

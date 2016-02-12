@@ -55,7 +55,7 @@ class DepthAverageScriptBaseTestCase(unittest.TestCase):
 
 
 
-class DepthAverageScriptTest_EqualLayers(DepthAverageScriptBaseTestCase):
+class Testcase_EqualLayers(DepthAverageScriptBaseTestCase):
     def setUp(self):
         self.ncin_fname = 'in_test_equal.nc'
         self.ncout_fname = 'out_test_equal.nc'
@@ -87,7 +87,7 @@ class DepthAverageScriptTest_EqualLayers(DepthAverageScriptBaseTestCase):
 
 
 
-class DepthAverageScriptTest_NonEqualLayers(DepthAverageScriptBaseTestCase):
+class Testcase_NonEqualLayers(DepthAverageScriptBaseTestCase):
     def setUp(self):
         self.ncin_fname = 'in_test_nonequal.nc'
         self.ncout_fname = 'out_test_nonequal.nc'
@@ -117,7 +117,7 @@ class DepthAverageScriptTest_NonEqualLayers(DepthAverageScriptBaseTestCase):
         self.basetest_depth_averaged_summ_spm001_spm002(var, 20.4)
 
 
-class DepthAverageScriptTest_EqualLayers_Masked(DepthAverageScriptBaseTestCase):
+class Testcase_EqualLayers_Masked(DepthAverageScriptBaseTestCase):
     def setUp(self):
         self.ncin_fname = 'in_test_equal_ma.nc'
         self.ncout_fname = 'out_test_equal_ma.nc'
@@ -149,7 +149,7 @@ class DepthAverageScriptTest_EqualLayers_Masked(DepthAverageScriptBaseTestCase):
 
 
 
-class DepthAverageScriptTest_NonEqualLayers_Masked(DepthAverageScriptBaseTestCase):
+class Testcase_NonEqualLayers_Masked(DepthAverageScriptBaseTestCase):
     def setUp(self):
         self.ncin_fname = 'in_test_nonequal_ma.nc'
         self.ncout_fname = 'out_test_nonequal_ma.nc'
@@ -179,7 +179,7 @@ class DepthAverageScriptTest_NonEqualLayers_Masked(DepthAverageScriptBaseTestCas
         self.basetest_depth_averaged_summ_spm001_spm002(var, 20.4, masked_borders=True)
 
 
-class DepthAverageScriptTest_NonEqualLayers_Masked_Append(DepthAverageScriptBaseTestCase):
+class Testcase_NonEqualLayers_Masked_Append(DepthAverageScriptBaseTestCase):
     def setUp(self):
         self.nc_fname = 'test_nonequal_ma_append.nc'
         create_test_file(fname=self.nc_fname, layer_height='noneq', masked_borders=True)
