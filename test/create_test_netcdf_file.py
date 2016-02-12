@@ -138,6 +138,7 @@ def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, l
     var['attrs']['long_name']     = 'concentration_of_SPM_in_water_002'
     var['attrs']['units']         = 'mg/l'
     var['attrs']['missing_value'] = fill_value
+    var['attrs']['coordinates']   = 'layer lat lon'
 
 
     VARS.append(var)
