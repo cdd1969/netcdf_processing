@@ -3,6 +3,8 @@ import netCDF4 as netcdf
 import numpy as np
 import click
 import os.path
+import glob
+
 
 __author__ = 'nikolai chernikov, <nikolai.chernikov.gmail.com>'
 __date__ = 'January 2016'
@@ -343,8 +345,9 @@ def create_depth_averaged_nc(nc_in,
 
 
 
-@click.command(short_help='putin')
-@click.argument('nc_in', type=click.Path(exists=True, dir_okay=False), metavar='nc_in'
+@click.command()
+#@click.argument('nc_in', type=click.Path(exists=True, dir_okay=False), metavar='nc_in'
+@click.argument('nc_in', nargs=-1
     )
 @click.option('--nc_out', '-o', type=click.Path(exists=False, dir_okay=False), default='out.nc',
                 help='Name of the output netcdf file with results. Default: `out.nc`'
@@ -372,82 +375,98 @@ def create_depth_averaged_nc(nc_in,
     help='Flag to print additional output during processing.'
     )
 def run(nc_in, nc_out, append, layers, varname, z_dimname, waterdepth_varname, layerdepth_varname, verbose):
-    ''' INFO: Reads variable (or list of variables) from netcdf file, and performs depth-averaging.
-    Results are stored within newly created netcdf file.
+    ''' INFO: Reads variable(-s) from netcdf file(-s), and performs depth-averaging.
+    Results are stored within newly created netcdf file(-s) or appended to the input file(-s).
     
-    DESCRIPTION: Depth averaging is done in two steps:
-     1)  calculate RLT - dimensionless relative layer thickness.
+    DESCRIPTION: Depth averaging is done in 3 steps:
 
-     2)  multiply data-value at given cell at given timestep by RLT.
+      1)  calculate RLT - dimensionless relative layer thickness.
+
+      2)  multiply data-value at given cell at given timestep by RLT.
     
-     3)  summ the mutliplication results along given z-axis
+      3)  summ the mutliplication results along given z-axis
     
     EXAMPLES: Lets assume we have netcdf file <gfsen.nc> and we want to average spm-data
     over the depth. Within this file we have two spm variables <spm_c1> and <spm_c2> both of
     them are 4D with dimensions (time, z_layer, y, x) of shape (20, 10, 50, 100). The file also
     contains waterdepth information stored in 3D variable <wd> with dimensions (time, y, x) and
-    the layerdepth variable <ld> with dimensions (time, z_layer, y, x).
+    the layerdepth variable <ld> with dimensions (z_layer, y, x).
     
-    ---Problem 1---
+    <<< Problem 1:
     Generate <z_layer>-averaged <spm_c1>, averaged over all 10 layers, and store output in file <out1.nc>
 
-    ---Solution 1---
+    >>> Solution 1:
     $ python depth_average_nc.py gfsen.nc -o out1.nc -v spm_c1 -z z_layer --wd wd --lv ld
 
-    ---Problem 2---
+    <<< Problem 2:
     Generate <z_layer>-averaged <spm_c1>, <spm_c2> averaged over layers [2, 3, 4, 5]. Store output in file <out2.nc>
     
-    ---Solution 2---
+    >>> Solution 2:
     $ python depth_average_nc.py gfsen.nc -o out2.nc -v spm_c1 -v spm_c2 -l 2 5 -z z_layer --wv wd --lv ld
     
-    ---Problem 3---
-    Append existing file same data as in "Problem2"
+    <<< Problem 3:
+    Append existing file same data as in "Problem 2"
     
-    ---Solution 3---
+    >>> Solution 3:
     $ python depth_average_nc.py gfsen.nc -a -v spm_c1 -v spm_c2 -l 2 5 -z z_layer --wv wd --lv ld
-    '''
-    try:
-        nc    = netcdf.Dataset(nc_in , mode='r')
-    except Exception, err:
-        raise click.BadParameter('( {1} ) Can not read NetCDF file {0}'.format(nc_in, err), param_hint=['nc_in'])
-    if waterdepth_varname not in nc.variables.keys():
-        raise click.BadParameter('Variable `{1}` does not exist in file {0}'.format(nc_in, waterdepth_varname), param_hint=['--waterdepth_varname'])
-    if layerdepth_varname not in nc.variables.keys():
-        raise click.BadParameter('Variable `{1}` does not exist in file {0}'.format(nc_in, layerdepth_varname), param_hint=['--layerdepth_varname'])
-    for v in varname:
-        if v not in nc.variables.keys():
-            raise click.BadParameter('Variable `{1}` does not exist in file {0}'.format(nc_in, v), param_hint=['--varname'])
-        if z_dimname not in nc.variables[v].dimensions:
-            raise click.BadParameter('Dimension `{1}` doesnot exist in variable {v}'.format(nc_in, z_dimname), param_hint=['--z_dimname'])
-    if layers:
-        if layers[1]+1 > nc.dimensions[z_dimname]:
-            msg = 'Layer range-index `{0}` exceeds maximum size {1} of dimension `{2}`'.format(layers[1], nc.dimensions[z_dimname], z_dimname)
-            raise click.BadParameter(msg, param_hint=['--layers'])
-        
-        if layers[0] > layers[1]:
-            msg = 'Layer lower range-index `{0}` is greater than upper range-index `{1}`'.format(layers[0], layers[1])
-            raise click.BadParameter(msg, param_hint=['--layers'])
-    nc.close()
 
-    if append is False:
-        if os.path.exists(nc_out):
-            click.confirm('File `{0}` already exists. Do you want to overwrite it?'.format(nc_out), abort=True)
-    else:
-        nc_out = None
-
-    create_depth_averaged_nc(nc_in,
-        nc_out=nc_out,
-        var_list=varname,
-        z_dimname=z_dimname,
-        layers=layers,
-        waterdepth_varname=waterdepth_varname,
-        layerdepth_varname=layerdepth_varname,
-        log=verbose)
+    <<< Problem 4:
+    Solve "Problem 2" for all nectdf file in current directory. Store output in directory "output" under name "out.001.nc", "out.002.nc", etc.
     
-    if append is False:
-        click.echo(click.style('Finished: <{0}> created successfully.'.format(nc_out), fg='green', bold=True))
-    else:
-        click.echo(click.style('Finished: <{0}> appended successfully.'.format(nc_in), fg='green', bold=True))
+    >>> Solution 4:
+    $ python depth_average_nc.py *.nc -o output/out.nc -v spm_c1 -v spm_c2 -l 2 5 -z z_layer --wv wd --lv ld
+    '''
+
+
+    for index, fname_in in enumerate(nc_in):
+        # generate nc_out names
+        if len(nc_in) > 1:
+            name, ext = os.path.splitext(nc_out)
+            fname_out = name+'.{0:02d}'.format(index)+ext
+        else:
+            fname_out = nc_out
+        try:
+            nc    = netcdf.Dataset(fname_in , mode='r')
+        except Exception, err:
+            raise click.BadParameter('( {1} ) Can not read NetCDF file {0}'.format(fname_in, err), param_hint=['nc_in'])
+        if waterdepth_varname not in nc.variables.keys():
+            raise click.BadParameter('Variable `{1}` does not exist in file {0}'.format(fname_in, waterdepth_varname), param_hint=['--waterdepth_varname'])
+        if layerdepth_varname not in nc.variables.keys():
+            raise click.BadParameter('Variable `{1}` does not exist in file {0}'.format(fname_in, layerdepth_varname), param_hint=['--layerdepth_varname'])
+        for v in varname:
+            if v not in nc.variables.keys():
+                raise click.BadParameter('Variable `{1}` does not exist in file {0}'.format(fname_in, v), param_hint=['--varname'])
+            if z_dimname not in nc.variables[v].dimensions:
+                raise click.BadParameter('Dimension `{1}` doesnot exist in variable {v}'.format(fname_in, z_dimname), param_hint=['--z_dimname'])
+        if layers:
+            if layers[1]+1 > nc.dimensions[z_dimname]:
+                msg = 'Layer range-index `{0}` exceeds maximum size {1} of dimension `{2}`'.format(layers[1], nc.dimensions[z_dimname], z_dimname)
+                raise click.BadParameter(msg, param_hint=['--layers'])
+            
+            if layers[0] > layers[1]:
+                msg = 'Layer lower range-index `{0}` is greater than upper range-index `{1}`'.format(layers[0], layers[1])
+                raise click.BadParameter(msg, param_hint=['--layers'])
+        nc.close()
+
+        click.echo(click.style('Processing: <{0}>'.format(fname_in), fg='yellow', bold=True))
+        if append is False:
+            if os.path.exists(fname_out):
+                click.confirm(click.style('File `{0}` already exists. Do you want to overwrite it?'.format(fname_out), fg='red'), abort=True)
+        else:
+            fname_out = None
+        create_depth_averaged_nc(fname_in,
+            nc_out=fname_out,
+            var_list=varname,
+            z_dimname=z_dimname,
+            layers=layers,
+            waterdepth_varname=waterdepth_varname,
+            layerdepth_varname=layerdepth_varname,
+            log=verbose)
+        
+        if append:
+            click.echo(click.style('Finished: <{0}> appended successfully.'.format(fname_in), fg='green', bold=True))
+        else:
+            click.echo(click.style('Finished: <{0}> created successfully.'.format(fname_out), fg='green', bold=True))
 
 if __name__ == '__main__':
     run()
