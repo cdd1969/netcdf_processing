@@ -234,66 +234,27 @@ def create_depth_averaged_nc(nc_in,
         # >>> If `nc_out` has been passed, copy origina var and coord-vars
         if nc_out:
             #>>> Copy original variable
-            original_var = ncout.createVariable(v, dType, dimensions=original_dims_names, fill_value=fv)
-            for attr_n in var.ncattrs():
-                original_var.setncattr(attr_n, var.getncattr(attr_n))
-            original_var[:] = var[:]
-            if log: print u'\tCopying original variable', v
-
-            #>>> Now make sure that coordinate-variables are saved
-            #    1) It could be the name of the dimension
-            #    2) It could be stored within `coordinates` attribute
-            possible_coord_var_list = list(var.dimensions)
-            if 'coordinates' in var.ncattrs():
-                coords = var.coordinates
-                if isinstance(coords, (list, tuple)):
-                    possible_coord_var_list += list(coords)
-                elif isinstance(coords, (str, unicode)):
-                    possible_coord_var_list += coords.split()
-
-            if log: print u'\tChecking for possible coordinate-varibles:'
-            #>>> Now check if these coord-vars already exist. If not - save them!
-            for dim_name in possible_coord_var_list:
-                if log: print u'\t\t', dim_name, '>>>',
-                if dim_name in nc.variables.keys() and dim_name not in ncout.variables.keys():
-                    #>>> if conditions are met > copy our coordinate-variable
-                    if log: print 'copying'
-                    try:
-                        fv = nc.variables[dim_name]._FillValue
-                        coord_var = ncout.createVariable(dim_name, nc.variables[dim_name].datatype, dimensions=nc.variables[dim_name].dimensions, fill_value=fv)
-                    except:
-                        coord_var = ncout.createVariable(dim_name, nc.variables[dim_name].datatype, dimensions=nc.variables[dim_name].dimensions)
-
-                    for attr_n in nc.variables[dim_name].ncattrs():
-                        coord_var.setncattr(attr_n, nc.variables[dim_name].getncattr(attr_n))
-                    coord_var[:] = nc.variables[dim_name][:]
-                else:
-                    if log:
-                        print 'skipping',
-                        if dim_name in ncout.variables.keys():
-                            print '(already copied)'
-                        elif dim_name not in nc.variables.keys():
-                            print '(not found in NC_IN)'
-
-
-
+            if log: print u'\tCopying original variable `{0}` and dependencies...'.format(v)
+            copy_nc_var(nc, ncout, v, coord_attr='coordinates', log=log, indent='\t\t')
+            
         # create depth averaging
+        if log: print u'\tProcessing depth_averaging...'
         data = var[:]
-        if log: print '\toriginal data shape:', data.shape
+        if log: print '\t\toriginal data shape:', data.shape
         selected_data = np.take(data, np.arange( l1, l2+1, 1), axis=z_dim_index)
         
-        if log: print '\tselected data shape:', selected_data.shape
+        if log: print '\t\tselected data shape:', selected_data.shape
         # careful here!
         #   selected_layer_relthickness.shape = (time, z-selected, y, x)
         #   selected_data.shape = (time, z-selected, y, x)
         averaged_data = np.sum(selected_layer_relthickness * selected_data, axis=z_dim_index)
 
-        if log: print '\taveraged data shape:', averaged_data.shape
-        if log: print '\tdepth averaging >>> ok'
+        if log: print '\t\taveraged data shape:', averaged_data.shape
+        if log: print '\t\tdepth averaging >>> ok'
         
 
 
-        if log: print '\tcreating variable:', name
+        if log: print '\t\tcreating variable:', name
         newvar = ncout.createVariable(name, dType, dimensions=averaged_dims_names, fill_value=fv)
         newvar.setncattr('units', units)
         newvar.setncattr('original_var_name', v)
@@ -306,7 +267,7 @@ def create_depth_averaged_nc(nc_in,
         vnames.append(name)
 
     if len(var_list) > 1:
-        if log: print 'SUM_averaged:', name
+        if log: print 'Creating variable `SUM_averaged` from :', var_list
         newvar = ncout.createVariable(u'SUM_averaged', dType, dimensions=averaged_dims_names, fill_value=var._FillValue)
         newvar.setncattr('units', units)
         newvar.setncattr('vars_to_sum', ' '.join(var_list))
@@ -321,6 +282,92 @@ def create_depth_averaged_nc(nc_in,
     if nc_out:
         nc.close()
     ncout.close()
+
+
+
+def copy_nc_var(nc_in, nc_out, varname, coord_attr='coordinates', log=False, indent='\t'):
+    ''' Procedure. Copy variable from one netcdf file to another
+
+    Args:
+    -----
+        nc_in (netCDF4.Dataset):
+            opened instance of netcdf (copy from there)
+
+        nc_out (netCDF4.Dataset):
+            opened instance of netcdf (copy there)
+        
+        varname (str):
+            variable name to copy
+
+        coord_attr (str):
+            name of the attribute of the variable, where
+            the information about its coordinates is strored.
+
+            i.e
+            my_var.getncattr(coord_attr) = "level lat lon"
+
+        log (bool):
+            flag to print out more info
+
+        indent (str):
+            indent for nice output when log=True
+    
+    Return:
+    -------
+        This is a procedure, it does not return anything. It copies
+        a variable `varname` from `nc_in` to `nc_out`
+    '''
+    if varname not in nc_in.variables.keys():
+        return
+
+    var = nc_in.variables[varname]
+
+    # add requred dimensions
+    for d_name in var.dimensions:
+        if d_name not in nc_out.dimensions.keys():
+            nc_out.createDimension(d_name, size=len(nc_in.dimensions[d_name]))
+    
+    # add variable, copy attributes, copy data
+    if log: print indent+u'Copying variable {0}'.format(varname)
+    var_copy = nc_out.createVariable(varname,
+        nc_in.variables[varname].datatype,
+        dimensions=nc_in.variables[varname].dimensions,
+        fill_value=nc_in.variables[varname]._FillValue if '_FillValue' in nc_in.variables[varname].ncattrs() else None)
+    for attr_n in var.ncattrs():
+        var_copy.setncattr(attr_n, var.getncattr(attr_n))
+    var_copy[:] = var[:]
+
+
+    #>>> Now make sure that coordinate-variables are saved
+    #    1) It could be the name of the dimension
+    #    2) It could be stored within `coordinates` attribute
+    
+    # search for additional variables
+    if log: print indent+'Searching for possible coordinate-vars of variable `{0}`'.format(varname)
+    additional_var_list = list(var.dimensions)
+    if coord_attr in var.ncattrs():
+        coords = var.getncattr(coord_attr)
+        if isinstance(coords, (list, tuple)):
+            additional_var_list += list(coords)
+        elif isinstance(coords, (str, unicode)):
+            additional_var_list += coords.split()
+
+    # now add additional variables
+    for v_name in additional_var_list:
+        if log: print indent+u'\tFound `{1}` coordinate-var of variable `{0}`'.format(varname, v_name),
+        if v_name not in nc_in.variables.keys():
+            if log: print u'... skipping (not found in `nc_in`)'
+            continue
+        if v_name in nc_out.variables.keys():
+            if log: print u'... skipping (already exist)'
+            continue
+        if log: print u'... adding'
+        # entering recursion
+        copy_nc_var(nc_in, nc_out, v_name, coord_attr=coord_attr, log=log, indent=indent+'\t')
+
+
+
+
 
 
 
