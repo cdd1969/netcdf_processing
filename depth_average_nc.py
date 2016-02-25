@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import division
 import netCDF4 as netcdf
 import numpy as np
 import click
@@ -210,6 +211,8 @@ def create_depth_averaged_nc(nc_in,
     layer_relthickness = caclulate_relative_layer_thickness(nc.variables[layerdepth_varname][:], nc.variables[waterdepth_varname][:], include_time=True)
     selected_layer_relthickness = np.take(layer_relthickness, np.arange( l1, l2+1, 1), axis=z_dim_index)
 
+    rel_thick_factor = 1. / selected_layer_relthickness[0, :, 1, 1].sum()  # see ISSUE #1
+    selected_layer_relthickness = selected_layer_relthickness * rel_thick_factor
 
     # >>> Continue with variables of interest
     if log: print u'Reading file: {2}. Calculating depth averaged data for layer range {0}:{1}'.format(l1, l2, nc_in)
@@ -229,7 +232,6 @@ def create_depth_averaged_nc(nc_in,
         data = var[:]
         if log: print '\t\toriginal data shape:', data.shape
         selected_data = np.take(data, np.arange( l1, l2+1, 1), axis=z_dim_index)
-        
         if log: print '\t\tselected data shape:', selected_data.shape
         # careful here!
         #   selected_layer_relthickness.shape = (time, z-selected, y, x)
@@ -399,7 +401,7 @@ def copy_nc_var(nc_in, nc_out, varname, coord_attr='coordinates', log=False, ind
 @click.argument('nc_in', nargs=-1
     )
 @click.option('--nc_out', '-o', type=click.Path(exists=False, dir_okay=False), default='out.nc',
-                help='Name of the output netcdf file with results. Default: `out.nc`'
+                help='Name (or basename if more than one input file is given) of the output netcdf file(-s) with results. Default: `out.nc`'
     )
 @click.option('-a', '--append', is_flag=True, default=False,
         help='Flag to append result to the existing file `nc_in` If this option is used `--nc_out` is ignored.'

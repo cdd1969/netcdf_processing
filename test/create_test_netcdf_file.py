@@ -80,7 +80,7 @@ def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, l
     var['attrs']                  = dict()
     var['Dims']                   = ['getmGrid2D_getm_2', 'getmGrid2D_getm_1']
     var['attrs']['long_name']     = 'latitude'
-    var['attrs']['units']         = 'degree_east'
+    var['attrs']['units']         = 'degree_north'
     var['attrs']['missing_value'] = fill_value
 
     VARS.append(var)
@@ -92,7 +92,7 @@ def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, l
     var['attrs']                  = dict()
     var['Dims']                   = ['getmGrid2D_getm_2', 'getmGrid2D_getm_1']
     var['attrs']['long_name']     = 'longitude'
-    var['attrs']['units']         = 'degree_north'
+    var['attrs']['units']         = 'degree_east'
     var['attrs']['missing_value'] = fill_value
 
 
@@ -183,7 +183,7 @@ def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, l
     # save values...
     nc.variables['time'][:] = np.array([3600*i for i in xrange(3)])
     
-    nc.variables['lat'][:] = np.array([range(15), ]*10)
+    nc.variables['lat'][:] = np.array([range(10), ]*15)
     nc.variables['lon'][:] = np.array([[l*0.1 for l in xrange(15)], ]*10).transpose()
 
     nc.variables['water_depth_at_soil_surface'][:] = 5  # 5m depth everywhere
@@ -210,17 +210,11 @@ def create_test_file(fname='test.nc', layer_height='eq', masked_borders=False, l
 
     if masked_borders:
         # set fill_values
-        for v_name in ['water_depth_at_soil_surface', 'getmGrid3D_getm_layer']:
-            nc.variables[v_name][:, 0, :] = fill_value
-            nc.variables[v_name][:, -1, :] = fill_value
-            nc.variables[v_name][:, :, 0] = fill_value
-            nc.variables[v_name][:, :, -1] = fill_value
-
-        for v_name in ['concentration_of_SPM_in_water_001', 'concentration_of_SPM_in_water_002']:
-            nc.variables[v_name][:, :, 0, :] = fill_value
-            nc.variables[v_name][:, :, -1, :] = fill_value
-            nc.variables[v_name][:, :, :, 0] = fill_value
-            nc.variables[v_name][:, :, :, -1] = fill_value
+        for v_name in ['lat', 'lon', 'water_depth_at_soil_surface', 'getmGrid3D_getm_layer', 'concentration_of_SPM_in_water_001', 'concentration_of_SPM_in_water_002']:
+            nc.variables[v_name][..., 0, :] = fill_value
+            nc.variables[v_name][..., -1, :] = fill_value
+            nc.variables[v_name][..., 0] = fill_value
+            nc.variables[v_name][..., -1] = fill_value
 
     # the integration results should be....
     ''' for one cell (y,x) vertical column (5,1,1) (z-size,y-size,x-size)
