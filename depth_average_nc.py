@@ -63,10 +63,17 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
     # >>> Get dimensions
     z, y, x = layer_depth.shape
     t, y, x = water_depth.shape
-    # >>> Allocate memory for `layear_thickness` array, initialize it. This array represents layer thickness at timestep t=0. Values are always positive
-    layer_thickness = np.empty((z, y, x), dtype=float)
-    # >>> Allocate memory for `relative_thcikness` array, initialize it. This array represents relaitve layer thickness at timestep t=0 with respect to total water-depth. Values are always positive, dimensionless
-    layer_relthickness = np.empty((z, y, x), dtype=float)
+
+    # >>> Get optional mask
+    if isinstance(layer_depth, np.ma.MaskedArray):
+        mask = layer_depth.mask
+        # >>> Allocate memory for `layear_thickness` array, initialize it. This array represents layer thickness at timestep t=0. Values are always positive
+        layer_thickness = np.ma.array(np.empty((z, y, x), dtype=float), mask=mask)
+        # >>> Allocate memory for `relative_thcikness` array, initialize it. This array represents relaitve layer thickness at timestep t=0 with respect to total water-depth. Values are always positive, dimensionless
+        layer_relthickness = np.ma.array(np.empty((z, y, x), dtype=float), mask=mask)
+    else:
+        layer_thickness = np.empty((z, y, x), dtype=float)
+        layer_relthickness = np.empty((z, y, x), dtype=float)
     
 
 
@@ -211,7 +218,8 @@ def create_depth_averaged_nc(nc_in,
     layer_relthickness = caclulate_relative_layer_thickness(nc.variables[layerdepth_varname][:], nc.variables[waterdepth_varname][:], include_time=True)
     selected_layer_relthickness = np.take(layer_relthickness, np.arange( l1, l2+1, 1), axis=z_dim_index)
 
-    rel_thick_factor = 1. / selected_layer_relthickness[0, :, 1, 1].sum()  # see ISSUE #1
+    valid_cell_ji = (selected_layer_relthickness[0, 0, :, :].nonzero()[0][0], selected_layer_relthickness[0, 0, :, :].nonzero()[1][0])  # see ISSUE #2
+    rel_thick_factor = 1. / selected_layer_relthickness[0, :, valid_cell_ji[0], valid_cell_ji[1]].sum()  # see ISSUE #1 , #2
     selected_layer_relthickness = selected_layer_relthickness * rel_thick_factor
 
     # >>> Continue with variables of interest
