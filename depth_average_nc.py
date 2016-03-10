@@ -71,6 +71,13 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
         layer_thickness = np.ma.array(np.empty((z, y, x), dtype=float), mask=mask)
         # >>> Allocate memory for `relative_thcikness` array, initialize it. This array represents relaitve layer thickness at timestep t=0 with respect to total water-depth. Values are always positive, dimensionless
         layer_relthickness = np.ma.array(np.empty((z, y, x), dtype=float), mask=mask)
+    elif isinstance(water_depth, np.ma.MaskedArray):
+        # add new axis at 0-index position
+        # and repeat the array (z,y,x) `t` times along 0-index position axis
+        mask = water_depth[0, :, :].mask
+        mask = mask.reshape(1, y, x).repeat(z, 0)
+        layer_thickness = np.ma.array(np.empty((z, y, x), dtype=float), mask=mask)
+        layer_relthickness = np.ma.array(np.empty((z, y, x), dtype=float), mask=mask)
     else:
         layer_thickness = np.empty((z, y, x), dtype=float)
         layer_relthickness = np.empty((z, y, x), dtype=float)
