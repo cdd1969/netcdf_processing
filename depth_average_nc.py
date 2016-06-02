@@ -224,10 +224,15 @@ def create_depth_averaged_nc(nc_in,
     #>>> Now get the relative layer thickness
     layer_relthickness = caclulate_relative_layer_thickness(nc.variables[layerdepth_varname][:], nc.variables[waterdepth_varname][:], include_time=True)
     selected_layer_relthickness = np.take(layer_relthickness, np.arange( l1, l2+1, 1), axis=z_dim_index)
-
     valid_cell_ji = (selected_layer_relthickness[0, 0, :, :].nonzero()[0][0], selected_layer_relthickness[0, 0, :, :].nonzero()[1][0])  # see ISSUE #2
     rel_thick_factor = 1. / selected_layer_relthickness[0, :, valid_cell_ji[0], valid_cell_ji[1]].sum()  # see ISSUE #1 , #2
     selected_layer_relthickness = selected_layer_relthickness * rel_thick_factor
+    if log:
+        print u'Calculating relative layer thickness array of shape {0}, where {1} is the initial number of z-layers'.format(layer_relthickness.shape, layer_relthickness.shape[1])
+        print u'Relative layer thickness of all z-layers is:'
+        for l_ in xrange(layer_relthickness.shape[1]):
+            print u'\t layer {0} >>> {1}'.format(l_, layer_relthickness[0, l_, valid_cell_ji[0], valid_cell_ji[1]])
+        print u'Relative layer thickness of the selected {0} z-layers (considering multiplication factor {2}) is: {1}'.format(np.arange(l1, l2+1, 1), selected_layer_relthickness[0, :, valid_cell_ji[0], valid_cell_ji[1]], rel_thick_factor)
 
     # >>> Continue with variables of interest
     if log: print u'Reading file: {2}. Calculating depth averaged data for layer range {0}:{1}'.format(l1, l2, nc_in)
