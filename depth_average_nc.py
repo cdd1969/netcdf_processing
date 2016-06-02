@@ -64,6 +64,14 @@ def caclulate_relative_layer_thickness(layer_depth, water_depth, include_time=Fa
     z, y, x = layer_depth.shape
     t, y, x = water_depth.shape
 
+    # >>> Check water_depth to be valid
+    nonzero_wd_y, nonzero_wd_x = water_depth[0, :, :].nonzero()  # See ISSUE 3
+    if len(nonzero_wd_y) < 1 or len(nonzero_wd_x) < 1:
+        msg = u'{0}WARNING! All entries of the `water_depth` at the initial timestep are MASKED or ZERO. Will not be able to properly calculate relative layer thickness. Proceeding anyway.{0}'.format('\n'+'-'*50+'\n')
+        click.echo(click.style(msg, fg='red', bold=True))
+        #print msg
+
+
     # >>> Get optional mask
     if isinstance(layer_depth, np.ma.MaskedArray):
         mask = layer_depth.mask
@@ -230,15 +238,25 @@ def create_depth_averaged_nc(nc_in,
 
     #>>> Now get the relative layer thickness
     layer_relthickness = caclulate_relative_layer_thickness(nc.variables[layerdepth_varname][:], nc.variables[waterdepth_varname][:], include_time=True)
+    if log: print u'Calculating relative layer thickness array of shape {0}, where {1} is the initial number of z-layers'.format(layer_relthickness.shape, layer_relthickness.shape[1])
+    
     selected_layer_relthickness = np.take(layer_relthickness, np.arange( l1, l2+1, 1), axis=z_dim_index)
-    valid_cell_ji = (selected_layer_relthickness[0, 0, :, :].nonzero()[0][0], selected_layer_relthickness[0, 0, :, :].nonzero()[1][0])  # see ISSUE #2
+    if log: print u'Selected (with z-layers {1}) relative layer thickness array has shape {0}'.format(selected_layer_relthickness.shape, np.arange(l1, l2+1, 1))
+    
+    nonzero_cells = selected_layer_relthickness[0, 0, :, :].nonzero()  # will return a 2D array of (j, i) indices of an unmasked non-zero cells
+    if log: print u'Found non-zero cells: {0}'.format(nonzero_cells)
+    if len(nonzero_cells[0]) > 0 and len(nonzero_cells[1]) > 0:  #length is not zero. See ISSUE #3
+        valid_cell_ji = (nonzero_cells[0][0], nonzero_cells[1][0])  # see ISSUE #2
+    else:
+        valid_cell_ji = (0, 0)
+    if log:
+        print u'Relative layer thickness of all z-layers at valid cell {0} (y, x) is:'.format(valid_cell_ji)
+        for l_ in xrange(layer_relthickness.shape[1]):
+            print u'\t layer {0} >>> {1}'.format(l_, layer_relthickness[0, l_, valid_cell_ji[0], valid_cell_ji[1]])
+    
     rel_thick_factor = 1. / selected_layer_relthickness[0, :, valid_cell_ji[0], valid_cell_ji[1]].sum()  # see ISSUE #1 , #2
     selected_layer_relthickness = selected_layer_relthickness * rel_thick_factor
     if log:
-        print u'Calculating relative layer thickness array of shape {0}, where {1} is the initial number of z-layers'.format(layer_relthickness.shape, layer_relthickness.shape[1])
-        print u'Relative layer thickness of all z-layers is:'
-        for l_ in xrange(layer_relthickness.shape[1]):
-            print u'\t layer {0} >>> {1}'.format(l_, layer_relthickness[0, l_, valid_cell_ji[0], valid_cell_ji[1]])
         print u'Relative layer thickness of the selected {0} z-layers (considering multiplication factor {2}) is: {1}'.format(np.arange(l1, l2+1, 1), selected_layer_relthickness[0, :, valid_cell_ji[0], valid_cell_ji[1]], rel_thick_factor)
 
     # >>> Continue with variables of interest
@@ -312,14 +330,12 @@ def create_depth_averaged_nc(nc_in,
         newvar.setncattr(coord_attr, var.getncattr(coord_attr))
     newvar[:] = layer_relthickness[0, ...]
 
-
-    if copy_vars:
+    # >>> Finally copy the additional variables
+    if copy_vars and nc_out:
         if log: print u'Copying additional variables from the list {0} ...'.format(copy_vars)
         for copy_varname in copy_vars:
             copy_nc_var(nc, ncout, copy_varname, coord_attr=coord_attr, log=log, indent='')
             
-
-
     if nc_out:
         nc.close()
     ncout.close()
