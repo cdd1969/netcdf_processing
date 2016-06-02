@@ -349,6 +349,11 @@ def copy_nc_var(nc_in, nc_out, varname, coord_attr='coordinates', log=False, ind
         a variable `varname` from `nc_in` to `nc_out`
     '''
     if varname not in nc_in.variables.keys():
+        if log: print u'Can not copy variable `{0}` from {1} to {2}. Variable not found in the input netcdf file'.format(varname, nc_in.filepath(), nc_out.filepath())
+        return
+
+    if varname in nc_out.variables.keys():
+        if log: print u'Can not copy variable `{0}` from {1} to {2}. Variable already exists in the output netcdf file'.format(varname, nc_in.filepath(), nc_out.filepath())
         return
 
     var = nc_in.variables[varname]
