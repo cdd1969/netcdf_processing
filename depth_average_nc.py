@@ -111,6 +111,7 @@ def create_depth_averaged_nc(nc_in,
         waterdepth_varname='water_depth_at_soil_surface',
         layerdepth_varname='getmGrid3D_getm_layer',
         coord_attr='coordinates',
+        copy_vars=(),
         log=True):
     ''' Function reads variable (or list of variables) from netcdf datafile,
     and performs depth-averaging. It is done in two steps:
@@ -179,6 +180,12 @@ def create_depth_averaged_nc(nc_in,
             name of the attribute of a varibles from `var_list` that
             describes the coordinates. For example (cdl):
                 spm001.coordinates = 'level lat lon';
+
+        copy_vars (Optional[Tuple[str]]):
+            list with names of the variables that will be copied from the input
+            netcdf file to the output without processing. This is done at the very
+            end of the processing script.
+            Default: empty tuple => no additional variables will be copied.
 
         log (Optional[bool]):
             flag to print additional info in console, while processing
@@ -281,7 +288,7 @@ def create_depth_averaged_nc(nc_in,
         vnames.append(name)
 
     if len(var_list) > 1:
-        if log: print 'Creating variable `SUM_averaged` from :', var_list
+        if log: print 'Creating variable: `SUM_averaged`; from :', var_list
         newvar = ncout.createVariable(u'SUM_averaged', var.datatype, dimensions=averaged_dims_names, fill_value=fv)
         newvar.setncattr('units', units)
         newvar.setncattr('vars_to_sum', ' '.join(var_list))
@@ -296,7 +303,7 @@ def create_depth_averaged_nc(nc_in,
 
 
     # >>> Save Relative thickness into netcdf file
-    if log: print 'Creating variable:', 'layer_relative_thickness'
+    if log: print 'Creating variable:', '`layer_relative_thickness`'
     newvar = ncout.createVariable('layer_relative_thickness', float, dimensions=nc.variables[layerdepth_varname].dimensions)
     newvar.setncattr('units', '')
     newvar.setncattr('long_name', 'Dimensionless initial relative thickness of the layer')
@@ -304,6 +311,13 @@ def create_depth_averaged_nc(nc_in,
     if coord_attr in var.ncattrs():
         newvar.setncattr(coord_attr, var.getncattr(coord_attr))
     newvar[:] = layer_relthickness[0, ...]
+
+
+    if copy_vars:
+        if log: print u'Copying additional variables from the list {0} ...'.format(copy_vars)
+        for copy_varname in copy_vars:
+            copy_nc_var(nc, ncout, copy_varname, coord_attr=coord_attr, log=log, indent='')
+            
 
 
     if nc_out:
@@ -364,7 +378,7 @@ def copy_nc_var(nc_in, nc_out, varname, coord_attr='coordinates', log=False, ind
             nc_out.createDimension(d_name, size=len(nc_in.dimensions[d_name]))
     
     # add variable, copy attributes, copy data
-    if log: print indent+u'Copying variable {0}'.format(varname)
+    if log: print indent+u'Copying variable `{0}`'.format(varname)
     var_copy = nc_out.createVariable(varname,
         nc_in.variables[varname].datatype,
         dimensions=nc_in.variables[varname].dimensions,
@@ -436,7 +450,7 @@ def copy_nc_var(nc_in, nc_out, varname, coord_attr='coordinates', log=False, ind
     )
 @click.option('--varname', '-v', type=click.STRING, multiple=True,
             default=('concentration_of_SPM_in_water_001', 'concentration_of_SPM_in_water_002'),
-    help='Name of the variable within `nc_in` to be processed. Multiple variables can be passed with additional `-v` prefix for each. In example `-v name1 -v name2`. Default: `-v concentration_of_SPM_in_water_001 -v concentration_of_SPM_in_water_002`'
+    help='Name of the variable within `nc_in` to be processed. Multiple variables can be passed with additional `-v` prefix for each. For example `-v name1 -v name2`. Default: `-v concentration_of_SPM_in_water_001 -v concentration_of_SPM_in_water_002`'
     )
 @click.option('--z_dimname', '-z', type=click.STRING, default='getmGrid3D_getm_3',
     help='Name of the dimension, along which the depth-averaging will be performed. Default: `getmGrid3D_getm_3`'
@@ -450,12 +464,17 @@ def copy_nc_var(nc_in, nc_out, varname, coord_attr='coordinates', log=False, ind
 @click.option('--coord_attr', '--ca', 'coord_attr', type=click.STRING, default='coordinates',
     help='Name of the coordinate attribute of netcdf variables given with `-v`. Default `coordinates`'
     )
+@click.option('--copy_vars', '-c', type=click.STRING, multiple=True,
+            default=(),
+    help='Copy variable(s) from the input to the output file without processing. Pass the name(s) of the variable(s) to be copied. Multiple variables can be passed with additional `-c` prefix for each. For example `-c name1 -c name2`.'
+    )
 @click.option('--verbose', is_flag=True, default=False,
     help='Flag to print additional output during processing.'
     )
-def run(nc_in, nc_out, append, layers, varname, z_dimname, waterdepth_varname, layerdepth_varname, coord_attr, verbose):
+def run(nc_in, nc_out, append, layers, varname, z_dimname, waterdepth_varname, layerdepth_varname, coord_attr, copy_vars, verbose):
     ''' INFO: Reads variable(-s) from netcdf file(-s), and performs depth-averaging.
     Results are stored within newly created netcdf file(-s) or appended to the input file(-s).
+    Additionally can copy variables without processing.
     
     DESCRIPTION: Depth averaging is done in 3 steps:
 
@@ -541,6 +560,7 @@ def run(nc_in, nc_out, append, layers, varname, z_dimname, waterdepth_varname, l
             waterdepth_varname=waterdepth_varname,
             layerdepth_varname=layerdepth_varname,
             coord_attr=coord_attr,
+            copy_vars=copy_vars,
             log=verbose)
         
         if append:
